@@ -925,6 +925,27 @@ def handle_all_messages(message):
                 "❌ Ты не зарегистрирован! Напиши /start"
             )
 
+# === КОМАНДА /GETLOG (СКАЧАТЬ ЛОГИ) ===
+@bot.message_handler(commands=['getlog'])
+def send_logs(message):
+    user_id = message.from_user.id
+    if user_id != ADMIN_ID:
+        bot.send_message(message.chat.id, "❌ У тебя нет прав!")
+        return
+
+    if os.path.exists('log.txt'):
+        try:
+            with open('log.txt', 'rb') as f:
+                bot.send_document(
+                    message.chat.id,
+                    f,
+                    caption="📋 Вот полный лог всех сообщений (команды и текст)."
+                )
+        except Exception as e:
+            bot.send_message(message.chat.id, f"❌ Ошибка при отправке лога: {e}")
+    else:
+        bot.send_message(message.chat.id, "📁 Лог-файл пока пуст или не создан.")
+
 # === ЗАПУСК БОТА + ВЕБ-СЕРВЕР ДЛЯ RENDER ===
 app = Flask(__name__)
 
