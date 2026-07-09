@@ -5,7 +5,8 @@ import json
 import os
 import time
 
-TOKEN = '8428051798:AAG3LLpslkOg6DCrnSkrXJoWUP_MAoUmI4o'
+import os
+TOKEN = os.getenv('TOKEN')
 ADMIN_ID = 1107351961
 
 bot = telebot.TeleBot(TOKEN)
