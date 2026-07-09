@@ -4,9 +4,10 @@ from datetime import datetime
 import json
 import os
 import time
+from flask import Flask
+import threading
 
-import os
-TOKEN = os.getenv('TOKEN')
+TOKEN = '8428051798:AAF7nbiOL_qtuB_pSkERKNRthx7trKkI5X4'
 ADMIN_ID = 1107351961
 
 bot = telebot.TeleBot(TOKEN)
@@ -924,8 +925,22 @@ def handle_all_messages(message):
                 "❌ Ты не зарегистрирован! Напиши /start"
             )
 
-print("✅ Бот запущен с инлайн-кнопками и умными админ-фичами!")
-print(f"📁 Логи: {os.path.abspath(LOG_FILE)}")
-print(f"📁 Пользователи: {os.path.abspath(USER_DATA_FILE)}")
-print(f"👑 Админ ID: {ADMIN_ID}")
-bot.infinity_polling()
+# === ЗАПУСК БОТА + ВЕБ-СЕРВЕР ДЛЯ RENDER ===
+app = Flask(__name__)
+
+@app.route('/')
+def home():
+    return "Бот работает!", 200
+
+def run_bot():
+    print("✅ Бот запущен с инлайн-кнопками и умными админ-фичами!")
+    print(f"📁 Логи: {os.path.abspath(LOG_FILE)}")
+    print(f"📁 Пользователи: {os.path.abspath(USER_DATA_FILE)}")
+    print(f"👑 Админ ID: {ADMIN_ID}")
+    bot.infinity_polling()
+
+# Запускаем бота в отдельном потоке
+threading.Thread(target=run_bot, daemon=True).start()
+
+# Запускаем веб-сервер (для Render)
+app.run(host='0.0.0.0', port=10000)
