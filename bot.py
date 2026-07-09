@@ -7,6 +7,7 @@ import time
 from flask import Flask
 import threading
 
+# === ТОКЕН И ID АДМИНА ===
 TOKEN = os.getenv('TOKEN')
 ADMIN_ID = 1107351961
 
@@ -14,16 +15,11 @@ bot = telebot.TeleBot(TOKEN)
 
 # === ФАЙЛЫ ===
 USER_DATA_FILE = 'users.json'
-LOG_DIR = 'logs'
-LOG_FILE = os.path.join(LOG_DIR, 'log.txt')
 BANNED_FILE = 'banned.json'
 MUTED_FILE = 'muted.json'
 WARNS_FILE = 'warns.json'
 
-if not os.path.exists(LOG_DIR):
-    os.makedirs(LOG_DIR)
-
-# === ЛОГИРОВАНИЕ ===
+# === ЛОГИРОВАНИЕ В КОНСОЛЬ И ФАЙЛ ===
 def log_user_action(message, action="message"):
     try:
         user = message.from_user
@@ -33,12 +29,9 @@ def log_user_action(message, action="message"):
         last_name = user.last_name or ""
         full_name = f"{first_name} {last_name}".strip()
         text = message.text or "не текст"
-
         log_entry = f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] {full_name} (@{username}, id={user_id}) -> {action}: {text}"
-
         print(log_entry)
-
-        with open(LOG_FILE, 'a', encoding='utf-8') as f:
+        with open('log.txt', 'a', encoding='utf-8') as f:
             f.write(log_entry + '\n')
     except Exception as e:
         print(f"❌ Ошибка логирования: {e}")
@@ -123,7 +116,6 @@ def send_broadcast(message_text):
     users = load_users()
     success = 0
     fail = 0
-    
     for user_id, user_data in users.items():
         if is_banned(int(user_id)):
             continue
@@ -134,7 +126,6 @@ def send_broadcast(message_text):
         except Exception as e:
             fail += 1
             print(f"❌ Не удалось отправить {user_id}: {e}")
-    
     return success, fail
 
 # === КЛАВИАТУРА ===
@@ -166,12 +157,7 @@ def inline_keyboard():
 # === ПРОВЕРКА НА БАН И МУТ ===
 def check_banned(message):
     if is_banned(message.from_user.id):
-        bot.send_message(
-            message.chat.id, 
-            "⛔ Ты забанен!\n\n"
-            "Ты можешь писать только в поддержку: /support\n"
-            "Обратись к @whyyhe для разблокировки."
-        )
+        bot.send_message(message.chat.id, "⛔ Ты забанен!\n\nТы можешь писать только в поддержку: /support\nОбратись к @whyyhe для разблокировки.")
         return True
     return False
 
@@ -181,7 +167,7 @@ def check_muted(message):
         return True
     return False
 
-# === БАЗА ЗНАНИЙ (FAQ) ДЛЯ АВТООТВЕТЧИКА ===
+# === БАЗА ЗНАНИЙ (FAQ) ===
 FAQ = {
     "бан": "Если тебя забанили, напиши в поддержку, я разберусь. Обычно баны даются за нарушение правил.",
     "доступ": "Чтобы получить доступ, нажми на кнопку 'Купить доступ' или напиши админу.",
@@ -202,47 +188,24 @@ def start(message):
     user_id = message.from_user.id
     username = message.from_user.username
     first_name = message.from_user.first_name
-    
     is_new = save_user(user_id, username, first_name)
-    
     if is_new:
         users = load_users()
         total_users = len(users)
-        notify_text = (
-            f"🆕 НОВЫЙ ПОЛЬЗОВАТЕЛЬ!\n\n"
-            f"👤 Имя: {first_name or 'Без имени'}\n"
-            f"🆔 ID: {user_id}\n"
-            f"📛 Юзернейм: @{username or 'нет'}\n"
-            f"📅 Дата: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n"
-            f"👥 Всего пользователей: {total_users}"
-        )
+        notify_text = (f"🆕 НОВЫЙ ПОЛЬЗОВАТЕЛЬ!\n\n👤 Имя: {first_name or 'Без имени'}\n🆔 ID: {user_id}\n📛 Юзернейм: @{username or 'нет'}\n📅 Дата: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n👥 Всего пользователей: {total_users}")
         try:
             bot.send_message(ADMIN_ID, notify_text)
         except:
             pass
-        
-        bot.send_message(
-            message.chat.id,
-            f"👋 Добро пожаловать, {first_name or 'гость'}!\n\n"
-            f"Ты автоматически зарегистрирован.\n"
-            f"Используй кнопки ниже 👇",
-            reply_markup=inline_keyboard()
-        )
+        bot.send_message(message.chat.id, f"👋 Добро пожаловать, {first_name or 'гость'}!\n\nТы автоматически зарегистрирован.\nИспользуй кнопки ниже 👇", reply_markup=inline_keyboard())
     else:
-        bot.send_message(
-            message.chat.id,
-            f"👋 С возвращением, {first_name or 'гость'}!\n\n"
-            f"Выбери действие:",
-            reply_markup=inline_keyboard()
-        )
+        bot.send_message(message.chat.id, f"👋 С возвращением, {first_name or 'гость'}!\n\nВыбери действие:", reply_markup=inline_keyboard())
 
-# === ОБРАБОТЧИК ИНЛАЙН-КНОПОК ===
 @bot.callback_query_handler(func=lambda call: True)
 def handle_callback(call):
     if is_banned(call.from_user.id) and call.data != "support":
         bot.answer_callback_query(call.id, "⛔ Ты забанен! Пиши только в поддержку.", show_alert=True)
         return
-    
     if call.data == "bio":
         class FakeMessage:
             def __init__(self, chat_id, from_user):
@@ -251,7 +214,6 @@ def handle_callback(call):
                 self.text = "/bio"
         fake_msg = FakeMessage(call.message.chat.id, call.from_user)
         bio(fake_msg)
-    
     elif call.data == "website":
         class FakeMessage:
             def __init__(self, chat_id, from_user):
@@ -260,7 +222,6 @@ def handle_callback(call):
                 self.text = "/website"
         fake_msg = FakeMessage(call.message.chat.id, call.from_user)
         website(fake_msg)
-    
     elif call.data == "instagram":
         class FakeMessage:
             def __init__(self, chat_id, from_user):
@@ -269,7 +230,6 @@ def handle_callback(call):
                 self.text = "/instagram"
         fake_msg = FakeMessage(call.message.chat.id, call.from_user)
         instagram(fake_msg)
-    
     elif call.data == "support":
         class FakeMessage:
             def __init__(self, chat_id, from_user):
@@ -278,7 +238,6 @@ def handle_callback(call):
                 self.text = "/support"
         fake_msg = FakeMessage(call.message.chat.id, call.from_user)
         support_command(fake_msg)
-    
     elif call.data == "profile":
         class FakeMessage:
             def __init__(self, chat_id, from_user):
@@ -287,7 +246,6 @@ def handle_callback(call):
                 self.text = "👤 Мой профиль"
         fake_msg = FakeMessage(call.message.chat.id, call.from_user)
         profile(fake_msg)
-    
     elif call.data == "buy":
         class FakeMessage:
             def __init__(self, chat_id, from_user):
@@ -296,7 +254,6 @@ def handle_callback(call):
                 self.text = "/buy"
         fake_msg = FakeMessage(call.message.chat.id, call.from_user)
         buy_access(fake_msg)
-    
     elif call.data == "help":
         class FakeMessage:
             def __init__(self, chat_id, from_user):
@@ -305,25 +262,14 @@ def handle_callback(call):
                 self.text = "/help"
         fake_msg = FakeMessage(call.message.chat.id, call.from_user)
         help_command(fake_msg)
-    
     bot.answer_callback_query(call.id)
 
-# === ВСЕ ОСТАЛЬНЫЕ КОМАНДЫ ===
 @bot.message_handler(commands=['bio'])
 def bio(message):
     if check_banned(message): return
     if check_muted(message): return
     log_user_action(message, "/bio")
-    bot.send_message(
-        message.chat.id,
-        "Why him? I don't know — he's obviously worse.\n\n"
-        "One life. One shot. One name you won't forget.\n\n"
-        "I don't owe explanations to anyone who ain't on my level — financially or otherwise. "
-        "If your pockets are light, don't expect me to break it down for you.\n\n"
-        "If you know — you know where to find me.\n\n"
-        "@whyyhe — personal.\n"
-        "@w3hand — the movement."
-    )
+    bot.send_message(message.chat.id, "Why him? I don't know — he's obviously worse.\n\nOne life. One shot. One name you won't forget.\n\nI don't owe explanations to anyone who ain't on my level — financially or otherwise. If your pockets are light, don't expect me to break it down for you.\n\nIf you know — you know where to find me.\n\n@whyyhe — personal.\n@w3hand — the movement.")
 
 @bot.message_handler(commands=['website'])
 def website(message):
@@ -339,101 +285,52 @@ def instagram(message):
     log_user_action(message, "/instagram")
     bot.send_message(message.chat.id, "📸 My Instagram: https://www.instagram.com/oh.whyyhe")
 
-# === КОМАНДА /SUPPORT С АВТООТВЕТЧИКОМ ===
 @bot.message_handler(commands=['support'])
 def support_command(message):
     log_user_action(message, "/support")
     user_id = message.from_user.id
-    
     text = message.text.replace('/support', '').strip().lower()
-    
     if text:
         for key, answer in FAQ.items():
             if key in text:
-                bot.reply_to(
-                    message, 
-                    f"🤖 **Автоответ:**\n\n{answer}\n\n"
-                    f"Если это не решило проблему, напиши подробнее — я передам админу."
-                )
+                bot.reply_to(message, f"🤖 **Автоответ:**\n\n{answer}\n\nЕсли это не решило проблему, напиши подробнее — я передам админу.")
                 return
-    
     user = message.from_user
     username = user.username or "без юзернейма"
     first_name = user.first_name or "Без имени"
-    
     banned_status = "⛔ ЗАБАНЕН" if is_banned(user_id) else "✅ Не в бане"
-    
-    admin_text = (
-        f"📩 НОВОЕ СООБЩЕНИЕ В ПОДДЕРЖКУ!\n\n"
-        f"👤 От: {first_name}\n"
-        f"🆔 ID: {user_id}\n"
-        f"📛 Юзернейм: @{username}\n"
-        f"📊 Статус: {banned_status}\n\n"
-        f"📝 Текст:\n{text}\n\n"
-        f"💡 Чтобы ответить, напиши:\n/reply {user_id} ТВОЙ_ОТВЕТ"
-    )
-    
+    admin_text = (f"📩 НОВОЕ СООБЩЕНИЕ В ПОДДЕРЖКУ!\n\n👤 От: {first_name}\n🆔 ID: {user_id}\n📛 Юзернейм: @{username}\n📊 Статус: {banned_status}\n\n📝 Текст:\n{text}\n\n💡 Чтобы ответить, напиши:\n/reply {user_id} ТВОЙ_ОТВЕТ")
     try:
         bot.send_message(ADMIN_ID, admin_text)
-        bot.send_message(
-            message.chat.id,
-            "✅ Твоё сообщение отправлено администратору!\n\n"
-            "Мы ответим тебе в ближайшее время."
-        )
+        bot.send_message(message.chat.id, "✅ Твоё сообщение отправлено администратору!\n\nМы ответим тебе в ближайшее время.")
     except Exception as e:
-        bot.send_message(
-            message.chat.id,
-            "❌ Ошибка отправки сообщения. Попробуй позже."
-        )
+        bot.send_message(message.chat.id, "❌ Ошибка отправки сообщения. Попробуй позже.")
 
-# === КОМАНДА /REPLY ===
 @bot.message_handler(commands=['reply'])
 def reply_command(message):
     user_id = message.from_user.id
-    
     if user_id != ADMIN_ID:
         bot.send_message(message.chat.id, "❌ У тебя нет прав!")
         return
-    
     parts = message.text.split(maxsplit=2)
     if len(parts) < 3:
-        bot.send_message(
-            message.chat.id,
-            "❌ Используй: /reply ID ТЕКСТ\n\n"
-            "Пример: /reply 123456789 Привет, я тебя разбанил!"
-        )
+        bot.send_message(message.chat.id, "❌ Используй: /reply ID ТЕКСТ\n\nПример: /reply 123456789 Привет, я тебя разбанил!")
         return
-    
     try:
         target_id = int(parts[1])
         reply_text = parts[2]
     except:
         bot.send_message(message.chat.id, "❌ Неверный ID!")
         return
-    
     if not is_registered(target_id):
-        bot.send_message(
-            message.chat.id,
-            f"❌ Пользователь с ID {target_id} не найден."
-        )
+        bot.send_message(message.chat.id, f"❌ Пользователь с ID {target_id} не найден.")
         return
-    
     try:
-        bot.send_message(
-            target_id,
-            f"📩 ОТВЕТ ОТ АДМИНИСТРАТОРА:\n\n{reply_text}"
-        )
-        bot.send_message(
-            message.chat.id,
-            f"✅ Ответ отправлен пользователю {target_id}!"
-        )
+        bot.send_message(target_id, f"📩 ОТВЕТ ОТ АДМИНИСТРАТОРА:\n\n{reply_text}")
+        bot.send_message(message.chat.id, f"✅ Ответ отправлен пользователю {target_id}!")
     except Exception as e:
-        bot.send_message(
-            message.chat.id,
-            f"❌ Не удалось отправить ответ: {e}"
-        )
+        bot.send_message(message.chat.id, f"❌ Не удалось отправить ответ: {e}")
 
-# === ПРОФИЛЬ ===
 def profile(message):
     user_id = message.from_user.id
     if check_banned(message): return
@@ -442,19 +339,10 @@ def profile(message):
     user_data = users.get(str(user_id))
     if user_data:
         now = datetime.now()
-        bot.send_message(
-            message.chat.id,
-            f"👤 Твой профиль:\n\n"
-            f"🕐 Текущее время: {now.strftime('%H:%M:%S')}\n"
-            f"📅 Текущая дата: {now.strftime('%Y-%m-%d')}\n\n"
-            f"👤 Имя: {user_data['first_name']}\n"
-            f"📛 Юзернейм: @{user_data['username']}\n"
-            f"📅 Дата регистрации: {user_data['date']}"
-        )
+        bot.send_message(message.chat.id, f"👤 Твой профиль:\n\n🕐 Текущее время: {now.strftime('%H:%M:%S')}\n📅 Текущая дата: {now.strftime('%Y-%m-%d')}\n\n👤 Имя: {user_data['first_name']}\n📛 Юзернейм: @{user_data['username']}\n📅 Дата регистрации: {user_data['date']}")
     else:
         bot.send_message(message.chat.id, "❌ Ты не зарегистрирован! Напиши /start")
 
-# === КОМАНДА /CALC ===
 @bot.message_handler(commands=['calc'])
 def calc(message):
     if check_banned(message): return
@@ -470,39 +358,29 @@ def calc(message):
     except:
         bot.send_message(message.chat.id, "❌ Ошибка!")
 
-# === КОМАНДА /BUY ===
 @bot.message_handler(commands=['buy'])
 def buy_access(message):
     if check_banned(message): return
     if check_muted(message): return
     log_user_action(message, "/buy")
-    bot.send_message(
-        message.chat.id,
-        "⚡️ Платежи пока в разработке!\n\n"
-        "Скоро здесь будет возможность купить доступ к премиум-командам.\n"
-        "Следи за обновлениями!"
-    )
+    bot.send_message(message.chat.id, "⚡️ Платежи пока в разработке!\n\nСкоро здесь будет возможность купить доступ к премиум-командам.\nСледи за обновлениями!")
 
-# === АДМИН-КОМАНДЫ ===
 @bot.message_handler(commands=['stats'])
 def stats(message):
     user_id = message.from_user.id
     if user_id != ADMIN_ID:
         bot.send_message(message.chat.id, "❌ У тебя нет прав!")
         return
-    
     users = load_users()
     total_users = len(users)
-    
     commands_count = {}
     total_commands = 0
     today_commands = 0
     week_commands = 0
     today_date = datetime.now().strftime('%Y-%m-%d')
-    
     try:
-        if os.path.exists(LOG_FILE):
-            with open(LOG_FILE, 'r', encoding='utf-8') as f:
+        if os.path.exists('log.txt'):
+            with open('log.txt', 'r', encoding='utf-8') as f:
                 for line in f:
                     if '->' in line:
                         total_commands += 1
@@ -522,9 +400,7 @@ def stats(message):
                                 commands_count[cmd] = commands_count.get(cmd, 0) + 1
     except:
         pass
-    
     top_commands = sorted(commands_count.items(), key=lambda x: x[1], reverse=True)[:5]
-    
     today_users = 0
     week_users = 0
     for uid, data in users.items():
@@ -536,21 +412,9 @@ def stats(message):
                 week_users += 1
         except:
             pass
-    
     banned = load_banned()
     muted = load_muted()
-    
-    stats_text = (
-        f"📊 СТАТИСТИКА БОТА\n"
-        f"{'='*30}\n\n"
-        f"👥 Всего пользователей: {total_users}\n"
-        f"🆕 За сегодня: {today_users}\n"
-        f"📈 За неделю: {week_users}\n\n"
-        f"📱 Команд всего: {total_commands}\n"
-        f"📅 За сегодня: {today_commands}\n"
-        f"📆 За неделю: {week_commands}\n\n"
-        f"🔥 Топ команд:\n"
-    )
+    stats_text = (f"📊 СТАТИСТИКА БОТА\n{'='*30}\n\n👥 Всего пользователей: {total_users}\n🆕 За сегодня: {today_users}\n📈 За неделю: {week_users}\n\n📱 Команд всего: {total_commands}\n📅 За сегодня: {today_commands}\n📆 За неделю: {week_commands}\n\n🔥 Топ команд:\n")
     if top_commands:
         for i, (cmd, count) in enumerate(top_commands, 1):
             stats_text += f"  {i}. {cmd}: {count}\n"
@@ -583,27 +447,19 @@ def export_users(message):
     if message.from_user.id != ADMIN_ID:
         bot.send_message(message.chat.id, "❌ У тебя нет прав!")
         return
-    
     users = load_users()
     if not users:
         bot.send_message(message.chat.id, "📋 База пользователей пуста.")
         return
-    
     csv_data = "ID,Имя,Юзернейм,Дата регистрации\n"
     for uid, data in users.items():
         csv_data += f"{uid},{data['first_name']},@{data['username']},{data['date']}\n"
-    
     csv_file = 'users_export.csv'
     with open(csv_file, 'w', encoding='utf-8') as f:
         f.write(csv_data)
-    
     try:
         with open(csv_file, 'rb') as f:
-            bot.send_document(
-                message.chat.id, 
-                f,
-                caption="📊 Вот список всех пользователей в формате CSV"
-            )
+            bot.send_document(message.chat.id, f, caption="📊 Вот список всех пользователей в формате CSV")
         os.remove(csv_file)
         bot.send_message(message.chat.id, "✅ Файл успешно отправлен и удалён с сервера!")
     except Exception as e:
@@ -614,14 +470,12 @@ def top_users(message):
     if message.from_user.id != ADMIN_ID:
         bot.send_message(message.chat.id, "❌ У тебя нет прав!")
         return
-    
     try:
-        if not os.path.exists(LOG_FILE):
+        if not os.path.exists('log.txt'):
             bot.send_message(message.chat.id, "📋 Логов пока нет.")
             return
-        
         user_activity = {}
-        with open(LOG_FILE, 'r', encoding='utf-8') as f:
+        with open('log.txt', 'r', encoding='utf-8') as f:
             for line in f:
                 if '->' in line:
                     parts = line.split('id=')
@@ -629,13 +483,10 @@ def top_users(message):
                         user_id = parts[1].split(')')[0].strip()
                         if user_id.isdigit():
                             user_activity[user_id] = user_activity.get(user_id, 0) + 1
-        
         if not user_activity:
             bot.send_message(message.chat.id, "📋 Нет данных об активности.")
             return
-        
         top_users = sorted(user_activity.items(), key=lambda x: x[1], reverse=True)[:5]
-        
         users = load_users()
         top_text = "🏆 **Топ активных пользователей:**\n\n"
         for i, (user_id, count) in enumerate(top_users, 1):
@@ -643,9 +494,7 @@ def top_users(message):
             name = user_data.get('first_name', 'Неизвестно')
             username = user_data.get('username', 'нет')
             top_text += f"{i}. {name} (@{username}) — {count} команд\n"
-        
         bot.send_message(message.chat.id, top_text)
-    
     except Exception as e:
         bot.send_message(message.chat.id, f"❌ Ошибка: {e}")
 
@@ -654,10 +503,9 @@ def clean_logs(message):
     if message.from_user.id != ADMIN_ID:
         bot.send_message(message.chat.id, "❌ У тебя нет прав!")
         return
-    
     try:
-        if os.path.exists(LOG_FILE):
-            with open(LOG_FILE, 'w', encoding='utf-8') as f:
+        if os.path.exists('log.txt'):
+            with open('log.txt', 'w', encoding='utf-8') as f:
                 f.write("")
             bot.send_message(message.chat.id, "✅ Логи успешно очищены!")
         else:
@@ -688,12 +536,7 @@ def ban_user(message):
     save_banned(banned)
     bot.send_message(message.chat.id, f"✅ Пользователь {target_id} забанен!")
     try:
-        bot.send_message(
-            target_id, 
-            f"⛔ Ты забанен!\n\n"
-            f"Ты можешь писать только в поддержку: /support\n"
-            f"Обратись к @whyyhe для разблокировки."
-        )
+        bot.send_message(target_id, f"⛔ Ты забанен!\n\nТы можешь писать только в поддержку: /support\nОбратись к @whyyhe для разблокировки.")
     except:
         pass
 
@@ -829,103 +672,7 @@ def sendall_command(message):
     success, fail = send_broadcast(text)
     bot.send_message(message.chat.id, f"✅ Отправлено: {success}\n❌ Ошибок: {fail}")
 
-@bot.message_handler(commands=['help'])
-def help_command(message):
-    if check_banned(message): return
-    if check_muted(message): return
-    log_user_action(message, "/help")
-    user_commands = (
-        "📋 **Команды для всех:**\n"
-        "/start - Главное меню\n"
-        "/bio - Моё био\n"
-        "/website - Мой сайт\n"
-        "/instagram - Мой Instagram\n"
-        "/support ТЕКСТ - Сообщение в поддержку\n"
-        "/calc - Калькулятор\n"
-        "/buy - Купить доступ"
-    )
-    if message.from_user.id == ADMIN_ID:
-        admin_commands = (
-            "\n\n👑 **Админ-команды:**\n"
-            "/stats - Статистика бота\n"
-            "/users - Список всех пользователей\n"
-            "/export - Скачать базу пользователей (CSV)\n"
-            "/top - Топ активных пользователей\n"
-            "/clean_logs - Очистить логи\n"
-            "/sendall - Рассылка\n"
-            "/ban - Забанить\n"
-            "/unban - Разбанить\n"
-            "/banned - Список забаненных\n"
-            "/mute - Заглушить\n"
-            "/unmute - Разглушить\n"
-            "/warn - Предупредить\n"
-            "/warns - Предупреждения\n"
-            "/reply ID ТЕКСТ - Ответить пользователю"
-        )
-        bot.send_message(message.chat.id, user_commands + admin_commands)
-    else:
-        bot.send_message(message.chat.id, user_commands)
-
-# === ОБРАБОТЧИК ВСЕХ СООБЩЕНИЙ ===
-@bot.message_handler(func=lambda message: True)
-def handle_all_messages(message):
-    if not message.text.startswith('/'):
-        log_user_action(message, "💬 Сообщение")
-    
-    if message.text.startswith('/'):
-        return
-    
-    if is_banned(message.from_user.id):
-        bot.send_message(
-            message.chat.id,
-            "⛔ Ты забанен!\n\n"
-            "Ты можешь писать только в поддержку: /support\n"
-            "Обратись к @whyyhe для разблокировки."
-        )
-        return
-    
-    if check_muted(message): return
-    
-    user_id = message.from_user.id
-    
-    if message.text == "📝 Био":
-        bio(message)
-    elif message.text == "🌐 Сайт":
-        website(message)
-    elif message.text == "📋 Команды":
-        help_command(message)
-    elif message.text == "👤 Мой профиль":
-        profile(message)
-    elif message.text == "📸 Instagram":
-        instagram(message)
-    elif message.text == "🆘 Поддержка":
-        bot.send_message(
-            message.chat.id,
-            "✏️ Напиши /support ТВОЁ_СООБЩЕНИЕ\n\n"
-            "Пример: /support Меня забанили, помогите разобраться!"
-        )
-    elif message.text == "⚡️ Купить доступ":
-        buy_access(message)
-    else:
-        if is_registered(user_id):
-            bot.send_message(
-                message.chat.id,
-                "❓ Используй кнопки внизу 👇\n\n"
-                "Или напиши команду:\n"
-                "/bio - Био\n"
-                "/website - Сайт\n"
-                "/instagram - Instagram\n"
-                "/support - Поддержка\n"
-                "/calc - Калькулятор\n"
-                "/buy - Купить доступ"
-            )
-        else:
-            bot.send_message(
-                message.chat.id,
-                "❌ Ты не зарегистрирован! Напиши /start"
-            )
-
-# === КОМАНДА /GETLOG (СКАЧАТЬ ЛОГИ) ===
+# === КОМАНДА /GETLOG (СКАЧАТЬ ВСЕ ЛОГИ) ===
 @bot.message_handler(commands=['getlog'])
 def send_logs(message):
     user_id = message.from_user.id
@@ -946,6 +693,50 @@ def send_logs(message):
     else:
         bot.send_message(message.chat.id, "📁 Лог-файл пока пуст или не создан.")
 
+@bot.message_handler(commands=['help'])
+def help_command(message):
+    if check_banned(message): return
+    if check_muted(message): return
+    log_user_action(message, "/help")
+    user_commands = ("📋 **Команды для всех:**\n/start - Главное меню\n/bio - Моё био\n/website - Мой сайт\n/instagram - Мой Instagram\n/support ТЕКСТ - Сообщение в поддержку\n/calc - Калькулятор\n/buy - Купить доступ")
+    if message.from_user.id == ADMIN_ID:
+        admin_commands = ("\n\n👑 **Админ-команды:**\n/stats - Статистика бота\n/users - Список всех пользователей\n/export - Скачать базу пользователей (CSV)\n/top - Топ активных пользователей\n/clean_logs - Очистить логи\n/sendall - Рассылка\n/ban - Забанить\n/unban - Разбанить\n/banned - Список забаненных\n/mute - Заглушить\n/unmute - Разглушить\n/warn - Предупредить\n/warns - Предупреждения\n/reply ID ТЕКСТ - Ответить пользователю\n/getlog - Скачать полный лог сообщений")
+        bot.send_message(message.chat.id, user_commands + admin_commands)
+    else:
+        bot.send_message(message.chat.id, user_commands)
+
+# === ОБРАБОТЧИК ВСЕХ СООБЩЕНИЙ ===
+@bot.message_handler(func=lambda message: True)
+def handle_all_messages(message):
+    if not message.text.startswith('/'):
+        log_user_action(message, "💬 Сообщение")
+    if message.text.startswith('/'):
+        return
+    if is_banned(message.from_user.id):
+        bot.send_message(message.chat.id, "⛔ Ты забанен!\n\nТы можешь писать только в поддержку: /support\nОбратись к @whyyhe для разблокировки.")
+        return
+    if check_muted(message): return
+    user_id = message.from_user.id
+    if message.text == "📝 Био":
+        bio(message)
+    elif message.text == "🌐 Сайт":
+        website(message)
+    elif message.text == "📋 Команды":
+        help_command(message)
+    elif message.text == "👤 Мой профиль":
+        profile(message)
+    elif message.text == "📸 Instagram":
+        instagram(message)
+    elif message.text == "🆘 Поддержка":
+        bot.send_message(message.chat.id, "✏️ Напиши /support ТВОЁ_СООБЩЕНИЕ\n\nПример: /support Меня забанили, помогите разобраться!")
+    elif message.text == "⚡️ Купить доступ":
+        buy_access(message)
+    else:
+        if is_registered(user_id):
+            bot.send_message(message.chat.id, "❓ Используй кнопки внизу 👇\n\nИли напиши команду:\n/bio - Био\n/website - Сайт\n/instagram - Instagram\n/support - Поддержка\n/calc - Калькулятор\n/buy - Купить доступ")
+        else:
+            bot.send_message(message.chat.id, "❌ Ты не зарегистрирован! Напиши /start")
+
 # === ЗАПУСК БОТА + ВЕБ-СЕРВЕР ДЛЯ RENDER ===
 app = Flask(__name__)
 
@@ -955,7 +746,7 @@ def home():
 
 def run_bot():
     print("✅ Бот запущен с инлайн-кнопками и умными админ-фичами!")
-    print(f"📁 Логи: {os.path.abspath(LOG_FILE)}")
+    print(f"📁 Логи: {os.path.abspath('log.txt')}")
     print(f"📁 Пользователи: {os.path.abspath(USER_DATA_FILE)}")
     print(f"👑 Админ ID: {ADMIN_ID}")
     bot.infinity_polling()
