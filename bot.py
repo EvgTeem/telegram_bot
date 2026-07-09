@@ -7,7 +7,7 @@ import time
 from flask import Flask
 import threading
 
-TOKEN = '8428051798:AAF7nbiOL_qtuB_pSkERKNRthx7trKkI5X4'
+TOKEN = os.getenv('TOKEN')
 ADMIN_ID = 1107351961
 
 bot = telebot.TeleBot(TOKEN)
