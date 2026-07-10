@@ -149,7 +149,7 @@ def profile(message):
         now = datetime.now()
         bot.send_message(message.chat.id, f"👤 Твой профиль:\n\n🕐 Текущее время: {now.strftime('%H:%M:%S')}\n📅 Текущая дата: {now.strftime('%Y-%m-%d')}\n\n👤 Имя: {user_data['first_name']}\n📛 Юзернейм: @{user_data['username']}\n📅 Дата регистрации: {user_data['date']}")
 
-# === ОБРАБОТЧИК ИНЛАЙН-КНОПОК ===
+# === ОБРАБОТЧИК ИНЛАЙН-КНОПОК (ИСПРАВЛЕННЫЙ) ===
 @bot.callback_query_handler(func=lambda call: True)
 def handle_callback(call):
     if call.data == "bio":
