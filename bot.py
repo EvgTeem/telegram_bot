@@ -139,23 +139,21 @@ def main_keyboard():
     btn2 = KeyboardButton("🌐 Сайт")
     btn3 = KeyboardButton("📋 Команды")
     btn4 = KeyboardButton("👤 Мой профиль")
-    btn5 = KeyboardButton("📸 Instagram")
-    btn6 = KeyboardButton("🆘 Поддержка")
-    btn7 = KeyboardButton("⚡️ Купить доступ")
-    keyboard.add(btn1, btn2, btn3, btn4, btn5, btn6, btn7)
+    btn5 = KeyboardButton("🆘 Поддержка")
+    btn6 = KeyboardButton("⭐ VIP")
+    keyboard.add(btn1, btn2, btn3, btn4, btn5, btn6)
     return keyboard
 
 def inline_keyboard():
     keyboard = InlineKeyboardMarkup(row_width=2)
     btn1 = InlineKeyboardButton("📝 Био", callback_data="bio")
     btn2 = InlineKeyboardButton("🌐 Сайт", callback_data="website")
-    btn3 = InlineKeyboardButton("📸 Instagram", callback_data="instagram")
-    btn4 = InlineKeyboardButton("🆘 Поддержка", callback_data="support")
-    btn5 = InlineKeyboardButton("👤 Мой профиль", callback_data="profile")
-    btn6 = InlineKeyboardButton("⚡️ Купить доступ", callback_data="buy")
-    btn7 = InlineKeyboardButton("📋 Команды", callback_data="help")
-    btn8 = InlineKeyboardButton("🚀 Открыть приложение", web_app=InlineKeyboardButton.WebAppInfo(url="https://evgteem.github.io/my-site/"))
-    keyboard.add(btn1, btn2, btn3, btn4, btn5, btn6, btn7, btn8)
+    btn3 = InlineKeyboardButton("🆘 Поддержка", callback_data="support")
+    btn4 = InlineKeyboardButton("👤 Мой профиль", callback_data="profile")
+    btn5 = InlineKeyboardButton("⭐ VIP", callback_data="vip")
+    btn6 = InlineKeyboardButton("📋 Команды", callback_data="help")
+    btn7 = InlineKeyboardButton("🚀 Открыть приложение", web_app=InlineKeyboardButton.WebAppInfo(url="https://evgteem.github.io/my-site/"))
+    keyboard.add(btn1, btn2, btn3, btn4, btn5, btn6, btn7)
     return keyboard
 
 # === ПРОВЕРКА НА БАН И МУТ ===
@@ -174,7 +172,7 @@ def check_muted(message):
 # === БАЗА ЗНАНИЙ (FAQ) ===
 FAQ = {
     "бан": "Если тебя забанили, напиши в поддержку, я разберусь. Обычно баны даются за нарушение правил.",
-    "доступ": "Чтобы получить доступ, нажми на кнопку 'Купить доступ' или напиши админу.",
+    "доступ": "Чтобы получить VIP-доступ, нажми на кнопку 'VIP' или напиши админу.",
     "бот не работает": "Попробуй перезапустить бота командой /start. Если не помогает — напиши в поддержку.",
 }
 
@@ -204,21 +202,33 @@ def bio(message):
     if check_banned(message): return
     if check_muted(message): return
     log_user_action(message, "/bio")
-    bot.send_message(message.chat.id, "Твой био текст...")
+    bot.send_message(
+        message.chat.id,
+        "Why him? I don't know — he's obviously worse.\n\n"
+        "One life. One shot. One name you won't forget.\n\n"
+        "@whyyhe ain't just a person anymore. It's an organization. It's a movement. It's a whole damn ecosystem.\n\n"
+        "If you know — you know where to find me.\n\n"
+        "@whyyhe — the brand.\n"
+        "@w3hand — the movement."
+    )
 
 @bot.message_handler(commands=['website'])
 def website(message):
     if check_banned(message): return
     if check_muted(message): return
     log_user_action(message, "/website")
-    bot.send_message(message.chat.id, "https://evgteem.github.io/my-site/")
+    # Отправляем кнопку с открытием сайта
+    keyboard = InlineKeyboardMarkup()
+    btn = InlineKeyboardButton("🌐 Открыть сайт", web_app=InlineKeyboardButton.WebAppInfo(url="https://evgteem.github.io/my-site/"))
+    keyboard.add(btn)
+    bot.send_message(message.chat.id, "Нажми на кнопку, чтобы открыть сайт:", reply_markup=keyboard)
 
-@bot.message_handler(commands=['instagram'])
-def instagram(message):
+@bot.message_handler(commands=['vip'])
+def vip_command(message):
     if check_banned(message): return
     if check_muted(message): return
-    log_user_action(message, "/instagram")
-    bot.send_message(message.chat.id, "📸 My Instagram: https://www.instagram.com/oh.whyyhe")
+    log_user_action(message, "/vip")
+    bot.send_message(message.chat.id, "⭐ VIP-раздел пока в разработке. Скоро здесь появится что-то интересное!")
 
 @bot.message_handler(commands=['support'])
 def support_command(message):
@@ -292,13 +302,6 @@ def calc(message):
         bot.send_message(message.chat.id, f"🧮 {text} = {result}")
     except:
         bot.send_message(message.chat.id, "❌ Ошибка!")
-
-@bot.message_handler(commands=['buy'])
-def buy_access(message):
-    if check_banned(message): return
-    if check_muted(message): return
-    log_user_action(message, "/buy")
-    bot.send_message(message.chat.id, "⚡️ Платежи пока в разработке!\n\nСкоро здесь будет возможность купить доступ к премиум-командам.\nСледи за обновлениями!")
 
 # === АДМИН-КОМАНДЫ ===
 @bot.message_handler(commands=['stats'])
@@ -629,7 +632,7 @@ def help_command(message):
     if check_banned(message): return
     if check_muted(message): return
     log_user_action(message, "/help")
-    user_commands = ("📋 **Команды для всех:**\n/start - Главное меню\n/bio - Моё био\n/website - Мой сайт\n/instagram - Мой Instagram\n/support ТЕКСТ - Сообщение в поддержку\n/calc - Калькулятор\n/buy - Купить доступ")
+    user_commands = ("📋 **Команды для всех:**\n/start - Главное меню\n/bio - Моё био\n/website - Мой сайт\n/support ТЕКСТ - Сообщение в поддержку\n/calc - Калькулятор\n/vip - VIP-раздел")
     if message.from_user.id == ADMIN_ID:
         admin_commands = ("\n\n👑 **Админ-команды:**\n/stats - Статистика бота\n/users - Список всех пользователей\n/export - Скачать базу пользователей (CSV)\n/top - Топ активных пользователей\n/clean_logs - Очистить логи\n/sendall - Рассылка\n/ban - Забанить\n/unban - Разбанить\n/banned - Список забаненных\n/mute - Заглушить\n/unmute - Разглушить\n/warn - Предупредить\n/warns - Предупреждения\n/reply ID ТЕКСТ - Ответить пользователю\n/getlog - Скачать полный лог сообщений")
         bot.send_message(message.chat.id, user_commands + admin_commands)
@@ -645,18 +648,15 @@ def handle_callback(call):
     elif call.data == "website":
         bot.answer_callback_query(call.id, "🌐 Сайт")
         website(call.message)
-    elif call.data == "instagram":
-        bot.answer_callback_query(call.id, "📸 Instagram")
-        instagram(call.message)
     elif call.data == "support":
         bot.answer_callback_query(call.id, "🆘 Поддержка")
         support_command(call.message)
     elif call.data == "profile":
         bot.answer_callback_query(call.id, "👤 Профиль")
         profile(call.message)
-    elif call.data == "buy":
-        bot.answer_callback_query(call.id, "⚡️ Купить доступ")
-        buy_access(call.message)
+    elif call.data == "vip":
+        bot.answer_callback_query(call.id, "⭐ VIP")
+        vip_command(call.message)
     elif call.data == "help":
         bot.answer_callback_query(call.id, "📋 Команды")
         help_command(call.message)
@@ -687,12 +687,10 @@ def handle_reply_buttons(message):
         help_command(message)
     elif message.text == "👤 Мой профиль":
         profile(message)
-    elif message.text == "📸 Instagram":
-        instagram(message)
     elif message.text == "🆘 Поддержка":
         support_command(message)
-    elif message.text == "⚡️ Купить доступ":
-        buy_access(message)
+    elif message.text == "⭐ VIP":
+        vip_command(message)
     else:
         bot.send_message(message.chat.id, "❓ Используй кнопки внизу 👇")
 
