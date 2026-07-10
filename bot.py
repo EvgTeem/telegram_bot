@@ -140,7 +140,8 @@ def main_keyboard():
     btn3 = KeyboardButton("👤 Мой профиль")
     btn4 = KeyboardButton("🆘 Поддержка")
     btn5 = KeyboardButton("⭐ VIP")
-    keyboard.add(btn1, btn2, btn3, btn4, btn5)
+    btn6 = KeyboardButton("🚀 Открыть приложение")
+    keyboard.add(btn1, btn2, btn3, btn4, btn5, btn6)
     return keyboard
 
 def inline_keyboard():
@@ -673,6 +674,13 @@ def handle_reply_buttons(message):
         support_command(message)
     elif message.text == "⭐ VIP":
         vip_command(message)
+    elif message.text == "🚀 Открыть приложение":
+        # Открываем WebApp через инлайн-кнопку
+        from telebot.types import WebAppInfo
+        keyboard = InlineKeyboardMarkup()
+        btn = InlineKeyboardButton("🚀 Открыть приложение", web_app=WebAppInfo(url="https://evgteem.github.io/my-site/"))
+        keyboard.add(btn)
+        bot.send_message(message.chat.id, "Нажми на кнопку, чтобы открыть приложение:", reply_markup=keyboard)
     else:
         bot.send_message(message.chat.id, "❓ Используй кнопки внизу 👇")
 
