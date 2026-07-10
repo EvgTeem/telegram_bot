@@ -1,5 +1,5 @@
 import telebot
-from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardMarkup, KeyboardButton
+from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardMarkup, KeyboardButton, WebAppInfo
 from datetime import datetime
 import json
 import os
@@ -7,7 +7,6 @@ import time
 from flask import Flask
 import threading
 
-# === ТОКЕН И ID АДМИНА ===
 TOKEN = os.getenv('TOKEN')
 ADMIN_ID = 1107351961
 
@@ -19,7 +18,7 @@ BANNED_FILE = 'banned.json'
 MUTED_FILE = 'muted.json'
 WARNS_FILE = 'warns.json'
 
-# === ЛОГИРОВАНИЕ В КОНСОЛЬ И ФАЙЛ ===
+# === ЛОГИРОВАНИЕ ===
 def log_user_action(message, action="message"):
     try:
         user = message.from_user
@@ -141,7 +140,7 @@ def main_keyboard():
     keyboard.add(btn1, btn2, btn3, btn4, btn5, btn6, btn7)
     return keyboard
 
-# === ИНЛАЙН-КЛАВИАТУРА ===
+# === ИНЛАЙН-КЛАВИАТУРА (С КНОПКОЙ МИНИ-ПРИЛОЖЕНИЯ) ===
 def inline_keyboard():
     keyboard = InlineKeyboardMarkup(row_width=2)
     btn1 = InlineKeyboardButton("📝 Био", callback_data="bio")
@@ -151,7 +150,8 @@ def inline_keyboard():
     btn5 = InlineKeyboardButton("👤 Мой профиль", callback_data="profile")
     btn6 = InlineKeyboardButton("⚡️ Купить доступ", callback_data="buy")
     btn7 = InlineKeyboardButton("📋 Команды", callback_data="help")
-    keyboard.add(btn1, btn2, btn3, btn4, btn5, btn6, btn7)
+    btn8 = InlineKeyboardButton("🚀 Открыть приложение", web_app=WebAppInfo(url="https://evgteem.github.io/my-site/"))
+    keyboard.add(btn1, btn2, btn3, btn4, btn5, btn6, btn7, btn8)
     return keyboard
 
 # === ПРОВЕРКА НА БАН И МУТ ===
@@ -672,26 +672,21 @@ def sendall_command(message):
     success, fail = send_broadcast(text)
     bot.send_message(message.chat.id, f"✅ Отправлено: {success}\n❌ Ошибок: {fail}")
 
-# === КОМАНДА /GETLOG (СКАЧАТЬ ВСЕ ЛОГИ) ===
+# === КОМАНДА /GETLOG ===
 @bot.message_handler(commands=['getlog'])
 def send_logs(message):
     user_id = message.from_user.id
     if user_id != ADMIN_ID:
         bot.send_message(message.chat.id, "❌ У тебя нет прав!")
         return
-
     if os.path.exists('log.txt'):
         try:
             with open('log.txt', 'rb') as f:
-                bot.send_document(
-                    message.chat.id,
-                    f,
-                    caption="📋 Вот полный лог всех сообщений (команды и текст)."
-                )
+                bot.send_document(message.chat.id, f, caption="📋 Вот полный лог всех сообщений.")
         except Exception as e:
-            bot.send_message(message.chat.id, f"❌ Ошибка при отправке лога: {e}")
+            bot.send_message(message.chat.id, f"❌ Ошибка: {e}")
     else:
-        bot.send_message(message.chat.id, "📁 Лог-файл пока пуст или не создан.")
+        bot.send_message(message.chat.id, "📁 Лог-файл пока пуст.")
 
 @bot.message_handler(commands=['help'])
 def help_command(message):
@@ -745,14 +740,11 @@ def home():
     return "Бот работает!", 200
 
 def run_bot():
-    print("✅ Бот запущен с инлайн-кнопками и умными админ-фичами!")
+    print("✅ Бот запущен с мини-приложением!")
     print(f"📁 Логи: {os.path.abspath('log.txt')}")
     print(f"📁 Пользователи: {os.path.abspath(USER_DATA_FILE)}")
     print(f"👑 Админ ID: {ADMIN_ID}")
     bot.infinity_polling()
 
-# Запускаем бота в отдельном потоке
 threading.Thread(target=run_bot, daemon=True).start()
-
-# Запускаем веб-сервер (для Render)
 app.run(host='0.0.0.0', port=10000)
