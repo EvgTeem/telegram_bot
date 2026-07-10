@@ -232,15 +232,12 @@ def handle_web_app_data(message):
             if not text:
                 return
 
-            # Проверяем, забанен ли пользователь
-            is_banned_user = is_banned(user_id)
-
             # Создаём кнопки для админа
             keyboard = InlineKeyboardMarkup(row_width=2)
             reply_btn = InlineKeyboardButton("✅ Ответить", callback_data=f"reply_support_{user_id}")
             unban_btn = InlineKeyboardButton("🔓 Разбан", callback_data=f"unban_support_{user_id}")
             close_btn = InlineKeyboardButton("❌ Закрыть", callback_data=f"close_support_{user_id}")
-            keyboard.add(reply_btn, unban_btn if is_banned_user else InlineKeyboardButton("✅ Не в бане", callback_data="noop"))
+            keyboard.add(reply_btn, unban_btn if is_banned(user_id) else InlineKeyboardButton("✅ Не в бане", callback_data="noop"))
             keyboard.add(close_btn)
 
             admin_text = (
@@ -249,7 +246,7 @@ def handle_web_app_data(message):
                 f"🆔 ID: {user_id}\n"
                 f"📛 Юзернейм: @{username}\n"
                 f"👑 Статус: {'Администратор' if is_admin else 'Пользователь'}\n"
-                f"⛔ Бан: {'Да' if is_banned_user else 'Нет'}\n\n"
+                f"⛔ Бан: {'Да' if is_banned(user_id) else 'Нет'}\n\n"
                 f"📝 Текст:\n{text}"
             )
             bot.send_message(ADMIN_ID, admin_text, reply_markup=keyboard)
@@ -321,7 +318,7 @@ def website(message):
     if check_banned(message): return
     if check_muted(message): return
     log_user_action(message, "/website")
-    bot.send_message(message.chat.id, "🌐 My website: https://guns.lol/whyyhe")
+    bot.send_message(message.chat.id, "🌐 Мой сайт: https://evgteem.github.io/my-site/")
 
 @bot.message_handler(commands=['instagram'])
 def instagram(message):
