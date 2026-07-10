@@ -17,6 +17,7 @@ USER_DATA_FILE = 'users.json'
 BANNED_FILE = 'banned.json'
 MUTED_FILE = 'muted.json'
 WARNS_FILE = 'warns.json'
+LOG_FILE = 'log.txt'
 
 # === ЛОГИРОВАНИЕ ===
 def log_user_action(message, action="message"):
@@ -30,7 +31,7 @@ def log_user_action(message, action="message"):
         text = message.text or "не текст"
         log_entry = f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] {full_name} (@{username}, id={user_id}) -> {action}: {text}"
         print(log_entry)
-        with open('log.txt', 'a', encoding='utf-8') as f:
+        with open(LOG_FILE, 'a', encoding='utf-8') as f:
             f.write(log_entry + '\n')
     except Exception as e:
         print(f"❌ Ошибка логирования: {e}")
@@ -127,7 +128,7 @@ def send_broadcast(message_text):
             print(f"❌ Не удалось отправить {user_id}: {e}")
     return success, fail
 
-# === КЛАВИАТУРА ===
+# === КЛАВИАТУРЫ ===
 def main_keyboard():
     keyboard = ReplyKeyboardMarkup(row_width=2, resize_keyboard=True)
     btn1 = KeyboardButton("📝 Био")
@@ -140,7 +141,6 @@ def main_keyboard():
     keyboard.add(btn1, btn2, btn3, btn4, btn5, btn6, btn7)
     return keyboard
 
-# === ИНЛАЙН-КЛАВИАТУРА ===
 def inline_keyboard():
     keyboard = InlineKeyboardMarkup(row_width=2)
     btn1 = InlineKeyboardButton("📝 Био", callback_data="bio")
@@ -421,8 +421,8 @@ def stats(message):
     week_commands = 0
     today_date = datetime.now().strftime('%Y-%m-%d')
     try:
-        if os.path.exists('log.txt'):
-            with open('log.txt', 'r', encoding='utf-8') as f:
+        if os.path.exists(LOG_FILE):
+            with open(LOG_FILE, 'r', encoding='utf-8') as f:
                 for line in f:
                     if '->' in line:
                         total_commands += 1
@@ -513,11 +513,11 @@ def top_users(message):
         bot.send_message(message.chat.id, "❌ У тебя нет прав!")
         return
     try:
-        if not os.path.exists('log.txt'):
+        if not os.path.exists(LOG_FILE):
             bot.send_message(message.chat.id, "📋 Логов пока нет.")
             return
         user_activity = {}
-        with open('log.txt', 'r', encoding='utf-8') as f:
+        with open(LOG_FILE, 'r', encoding='utf-8') as f:
             for line in f:
                 if '->' in line:
                     parts = line.split('id=')
@@ -546,8 +546,8 @@ def clean_logs(message):
         bot.send_message(message.chat.id, "❌ У тебя нет прав!")
         return
     try:
-        if os.path.exists('log.txt'):
-            with open('log.txt', 'w', encoding='utf-8') as f:
+        if os.path.exists(LOG_FILE):
+            with open(LOG_FILE, 'w', encoding='utf-8') as f:
                 f.write("")
             bot.send_message(message.chat.id, "✅ Логи успешно очищены!")
         else:
@@ -721,9 +721,9 @@ def send_logs(message):
     if user_id != ADMIN_ID:
         bot.send_message(message.chat.id, "❌ У тебя нет прав!")
         return
-    if os.path.exists('log.txt'):
+    if os.path.exists(LOG_FILE):
         try:
-            with open('log.txt', 'rb') as f:
+            with open(LOG_FILE, 'rb') as f:
                 bot.send_document(message.chat.id, f, caption="📋 Вот полный лог всех сообщений.")
         except Exception as e:
             bot.send_message(message.chat.id, f"❌ Ошибка: {e}")
@@ -742,18 +742,31 @@ def help_command(message):
     else:
         bot.send_message(message.chat.id, user_commands)
 
-# === ОБРАБОТЧИК ВСЕХ СООБЩЕНИЙ ===
+# === ОБРАБОТЧИК ВСЕХ СООБЩЕНИЙ (ДЛЯ ЛОГОВ) ===
 @bot.message_handler(func=lambda message: True)
 def handle_all_messages(message):
+    # Логируем всё, что не команда
     if not message.text.startswith('/'):
         log_user_action(message, "💬 Сообщение")
+
+    # Пропускаем команды — они уже обработаны выше
     if message.text.startswith('/'):
         return
+
+    # === ОБРАБОТКА REPLY-КНОПОК (ТЕХ, ЧТО ВНИЗУ ЭКРАНА) ===
     if is_banned(message.from_user.id):
         bot.send_message(message.chat.id, "⛔ Ты забанен!\n\nТы можешь писать только в поддержку: /support\nОбратись к @whyyhe для разблокировки.")
         return
-    if check_muted(message): return
+
+    if check_muted(message):
+        return
+
     user_id = message.from_user.id
+
+    if not is_registered(user_id):
+        bot.send_message(message.chat.id, "❌ Сначала подтверди номер через /start", reply_markup=phone_keyboard())
+        return
+
     if message.text == "📝 Био":
         bio(message)
     elif message.text == "🌐 Сайт":
@@ -782,8 +795,8 @@ def home():
     return "Бот работает!", 200
 
 def run_bot():
-    print("✅ Бот запущен с поддержкой и разбаном!")
-    print(f"📁 Логи: {os.path.abspath('log.txt')}")
+    print("✅ Бот запущен с инлайн-кнопками и Reply-кнопками!")
+    print(f"📁 Логи: {os.path.abspath(LOG_FILE)}")
     print(f"📁 Пользователи: {os.path.abspath(USER_DATA_FILE)}")
     print(f"👑 Админ ID: {ADMIN_ID}")
     bot.infinity_polling()
