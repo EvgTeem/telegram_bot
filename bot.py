@@ -140,7 +140,7 @@ def main_keyboard():
     keyboard.add(btn1, btn2, btn3, btn4, btn5, btn6, btn7)
     return keyboard
 
-# === ИНЛАЙН-КЛАВИАТУРА (С КНОПКОЙ МИНИ-ПРИЛОЖЕНИЯ) ===
+# === ИНЛАЙН-КЛАВИАТУРА ===
 def inline_keyboard():
     keyboard = InlineKeyboardMarkup(row_width=2)
     btn1 = InlineKeyboardButton("📝 Био", callback_data="bio")
@@ -201,76 +201,121 @@ def start(message):
     else:
         bot.send_message(message.chat.id, f"👋 С возвращением, {first_name or 'гость'}!\n\nВыбери действие:", reply_markup=inline_keyboard())
 
-@bot.callback_query_handler(func=lambda call: True)
-def handle_callback(call):
-    if is_banned(call.from_user.id) and call.data != "support":
-        bot.answer_callback_query(call.id, "⛔ Ты забанен! Пиши только в поддержку.", show_alert=True)
-        return
-    if call.data == "bio":
-        class FakeMessage:
-            def __init__(self, chat_id, from_user):
-                self.chat = type('obj', (object,), {'id': chat_id})
-                self.from_user = from_user
-                self.text = "/bio"
-        fake_msg = FakeMessage(call.message.chat.id, call.from_user)
-        bio(fake_msg)
-    elif call.data == "website":
-        class FakeMessage:
-            def __init__(self, chat_id, from_user):
-                self.chat = type('obj', (object,), {'id': chat_id})
-                self.from_user = from_user
-                self.text = "/website"
-        fake_msg = FakeMessage(call.message.chat.id, call.from_user)
-        website(fake_msg)
-    elif call.data == "instagram":
-        class FakeMessage:
-            def __init__(self, chat_id, from_user):
-                self.chat = type('obj', (object,), {'id': chat_id})
-                self.from_user = from_user
-                self.text = "/instagram"
-        fake_msg = FakeMessage(call.message.chat.id, call.from_user)
-        instagram(fake_msg)
-    elif call.data == "support":
-        class FakeMessage:
-            def __init__(self, chat_id, from_user):
-                self.chat = type('obj', (object,), {'id': chat_id})
-                self.from_user = from_user
-                self.text = "/support"
-        fake_msg = FakeMessage(call.message.chat.id, call.from_user)
-        support_command(fake_msg)
-    elif call.data == "profile":
-        class FakeMessage:
-            def __init__(self, chat_id, from_user):
-                self.chat = type('obj', (object,), {'id': chat_id})
-                self.from_user = from_user
-                self.text = "👤 Мой профиль"
-        fake_msg = FakeMessage(call.message.chat.id, call.from_user)
-        profile(fake_msg)
-    elif call.data == "buy":
-        class FakeMessage:
-            def __init__(self, chat_id, from_user):
-                self.chat = type('obj', (object,), {'id': chat_id})
-                self.from_user = from_user
-                self.text = "/buy"
-        fake_msg = FakeMessage(call.message.chat.id, call.from_user)
-        buy_access(fake_msg)
-    elif call.data == "help":
-        class FakeMessage:
-            def __init__(self, chat_id, from_user):
-                self.chat = type('obj', (object,), {'id': chat_id})
-                self.from_user = from_user
-                self.text = "/help"
-        fake_msg = FakeMessage(call.message.chat.id, call.from_user)
-        help_command(fake_msg)
-    bot.answer_callback_query(call.id)
-
+# === НОВОЕ БИО ===
 @bot.message_handler(commands=['bio'])
 def bio(message):
     if check_banned(message): return
     if check_muted(message): return
     log_user_action(message, "/bio")
-    bot.send_message(message.chat.id, "Why him? I don't know — he's obviously worse.\n\nOne life. One shot. One name you won't forget.\n\nI don't owe explanations to anyone who ain't on my level — financially or otherwise. If your pockets are light, don't expect me to break it down for you.\n\nIf you know — you know where to find me.\n\n@whyyhe — personal.\n@w3hand — the movement.")
+    bot.send_message(
+        message.chat.id,
+        "Why him? I don't know — he's obviously worse.\n\n"
+        "One life. One shot. One name you won't forget.\n\n"
+        "@whyyhe ain't just a person anymore. It's an organization. It's a movement. It's a whole damn ecosystem.\n\n"
+        "If you know — you know where to find me.\n\n"
+        "@whyyhe — the brand.\n"
+        "@w3hand — the movement."
+    )
 
+# === ОБРАБОТЧИК ВЕБАПП (ПОДДЕРЖКА С КНОПКАМИ) ===
+@bot.message_handler(content_types=['web_app_data'])
+def handle_web_app_data(message):
+    try:
+        data = json.loads(message.web_app_data.data)
+        if data.get('type') == 'support':
+            user_id = data.get('user_id')
+            username = data.get('username', 'без юзернейма')
+            first_name = data.get('first_name', 'Пользователь')
+            text = data.get('text', '')
+            is_admin = data.get('is_admin', False)
+
+            if not text:
+                return
+
+            # Проверяем, забанен ли пользователь
+            is_banned_user = is_banned(user_id)
+
+            # Создаём кнопки для админа
+            keyboard = InlineKeyboardMarkup(row_width=2)
+            reply_btn = InlineKeyboardButton("✅ Ответить", callback_data=f"reply_support_{user_id}")
+            unban_btn = InlineKeyboardButton("🔓 Разбан", callback_data=f"unban_support_{user_id}")
+            close_btn = InlineKeyboardButton("❌ Закрыть", callback_data=f"close_support_{user_id}")
+            keyboard.add(reply_btn, unban_btn if is_banned_user else InlineKeyboardButton("✅ Не в бане", callback_data="noop"))
+            keyboard.add(close_btn)
+
+            admin_text = (
+                f"📩 **НОВОЕ СООБЩЕНИЕ ИЗ МИНИ-ПРИЛОЖЕНИЯ!**\n\n"
+                f"👤 От: {first_name}\n"
+                f"🆔 ID: {user_id}\n"
+                f"📛 Юзернейм: @{username}\n"
+                f"👑 Статус: {'Администратор' if is_admin else 'Пользователь'}\n"
+                f"⛔ Бан: {'Да' if is_banned_user else 'Нет'}\n\n"
+                f"📝 Текст:\n{text}"
+            )
+            bot.send_message(ADMIN_ID, admin_text, reply_markup=keyboard)
+
+            # Подтверждение пользователю
+            bot.send_message(message.chat.id, "✅ Сообщение отправлено администратору!")
+    except Exception as e:
+        print(f"❌ Ошибка обработки web_app_data: {e}")
+
+# === ОБРАБОТЧИК КНОПОК В УВЕДОМЛЕНИЯХ ПОДДЕРЖКИ ===
+@bot.callback_query_handler(func=lambda call: call.data.startswith('reply_support_') or call.data.startswith('unban_support_') or call.data.startswith('close_support_') or call.data == 'noop')
+def handle_support_callbacks(call):
+    if call.data == 'noop':
+        bot.answer_callback_query(call.id, "Пользователь не в бане")
+        return
+
+    if call.data.startswith('close_support_'):
+        bot.answer_callback_query(call.id, "Уведомление закрыто")
+        bot.edit_message_reply_markup(call.message.chat.id, call.message.message_id, reply_markup=None)
+        return
+
+    if call.data.startswith('unban_support_'):
+        try:
+            user_id = int(call.data.split('_')[2])
+        except:
+            bot.answer_callback_query(call.id, "Ошибка ID")
+            return
+
+        if is_banned(user_id):
+            banned = load_banned()
+            if str(user_id) in banned:
+                del banned[str(user_id)]
+                save_banned(banned)
+                bot.answer_callback_query(call.id, "✅ Пользователь разбанен!")
+                bot.send_message(user_id, "✅ Администратор разбанил вас через поддержку!")
+                bot.edit_message_reply_markup(call.message.chat.id, call.message.message_id, reply_markup=None)
+            else:
+                bot.answer_callback_query(call.id, "❌ Пользователь не в бане")
+        else:
+            bot.answer_callback_query(call.id, "❌ Пользователь не в бане")
+        return
+
+    if call.data.startswith('reply_support_'):
+        try:
+            user_id = int(call.data.split('_')[2])
+        except:
+            bot.answer_callback_query(call.id, "Ошибка ID")
+            return
+
+        bot.answer_callback_query(call.id, "Напишите ответ в следующем сообщении")
+        msg = bot.send_message(call.message.chat.id, f"✏️ Напиши ответ для пользователя {user_id}:")
+        bot.register_next_step_handler(msg, process_reply_to_user, user_id, call.message)
+
+def process_reply_to_user(message, target_id, original_message):
+    if message.text:
+        try:
+            bot.send_message(target_id, f"📩 ОТВЕТ ОТ АДМИНИСТРАТОРА:\n\n{message.text}")
+            bot.send_message(message.chat.id, f"✅ Ответ отправлен пользователю {target_id}")
+            try:
+                bot.edit_message_reply_markup(original_message.chat.id, original_message.message_id, reply_markup=None)
+            except:
+                pass
+        except Exception as e:
+            bot.send_message(message.chat.id, f"❌ Ошибка: {e}")
+
+# === ОСТАЛЬНЫЕ КОМАНДЫ ===
 @bot.message_handler(commands=['website'])
 def website(message):
     if check_banned(message): return
@@ -740,7 +785,7 @@ def home():
     return "Бот работает!", 200
 
 def run_bot():
-    print("✅ Бот запущен с мини-приложением!")
+    print("✅ Бот запущен с поддержкой и разбаном!")
     print(f"📁 Логи: {os.path.abspath('log.txt')}")
     print(f"📁 Пользователи: {os.path.abspath(USER_DATA_FILE)}")
     print(f"👑 Админ ID: {ADMIN_ID}")
