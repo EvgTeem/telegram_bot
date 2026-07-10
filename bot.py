@@ -1,5 +1,5 @@
 import telebot
-from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardMarkup, KeyboardButton
+from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardMarkup, KeyboardButton, WebAppInfo
 from datetime import datetime
 import json
 import os
@@ -136,24 +136,22 @@ def send_broadcast(message_text):
 def main_keyboard():
     keyboard = ReplyKeyboardMarkup(row_width=2, resize_keyboard=True)
     btn1 = KeyboardButton("📝 Био")
-    btn2 = KeyboardButton("🌐 Сайт")
-    btn3 = KeyboardButton("📋 Команды")
-    btn4 = KeyboardButton("👤 Мой профиль")
-    btn5 = KeyboardButton("🆘 Поддержка")
-    btn6 = KeyboardButton("⭐ VIP")
-    keyboard.add(btn1, btn2, btn3, btn4, btn5, btn6)
+    btn2 = KeyboardButton("📋 Команды")
+    btn3 = KeyboardButton("👤 Мой профиль")
+    btn4 = KeyboardButton("🆘 Поддержка")
+    btn5 = KeyboardButton("⭐ VIP")
+    keyboard.add(btn1, btn2, btn3, btn4, btn5)
     return keyboard
 
 def inline_keyboard():
     keyboard = InlineKeyboardMarkup(row_width=2)
     btn1 = InlineKeyboardButton("📝 Био", callback_data="bio")
-    btn2 = InlineKeyboardButton("🌐 Сайт", callback_data="website")
-    btn3 = InlineKeyboardButton("🆘 Поддержка", callback_data="support")
-    btn4 = InlineKeyboardButton("👤 Мой профиль", callback_data="profile")
-    btn5 = InlineKeyboardButton("⭐ VIP", callback_data="vip")
-    btn6 = InlineKeyboardButton("📋 Команды", callback_data="help")
-    btn7 = InlineKeyboardButton("🚀 Открыть приложение", web_app=InlineKeyboardButton.WebAppInfo(url="https://evgteem.github.io/my-site/"))
-    keyboard.add(btn1, btn2, btn3, btn4, btn5, btn6, btn7)
+    btn2 = InlineKeyboardButton("🆘 Поддержка", callback_data="support")
+    btn3 = InlineKeyboardButton("👤 Мой профиль", callback_data="profile")
+    btn4 = InlineKeyboardButton("⭐ VIP", callback_data="vip")
+    btn5 = InlineKeyboardButton("📋 Команды", callback_data="help")
+    btn6 = InlineKeyboardButton("🚀 Открыть приложение", web_app=WebAppInfo(url="https://evgteem.github.io/my-site/"))
+    keyboard.add(btn1, btn2, btn3, btn4, btn5, btn6)
     return keyboard
 
 # === ПРОВЕРКА НА БАН И МУТ ===
@@ -211,17 +209,6 @@ def bio(message):
         "@whyyhe — the brand.\n"
         "@w3hand — the movement."
     )
-
-@bot.message_handler(commands=['website'])
-def website(message):
-    if check_banned(message): return
-    if check_muted(message): return
-    log_user_action(message, "/website")
-    # Отправляем кнопку с открытием сайта
-    keyboard = InlineKeyboardMarkup()
-    btn = InlineKeyboardButton("🌐 Открыть сайт", web_app=InlineKeyboardButton.WebAppInfo(url="https://evgteem.github.io/my-site/"))
-    keyboard.add(btn)
-    bot.send_message(message.chat.id, "Нажми на кнопку, чтобы открыть сайт:", reply_markup=keyboard)
 
 @bot.message_handler(commands=['vip'])
 def vip_command(message):
@@ -632,7 +619,7 @@ def help_command(message):
     if check_banned(message): return
     if check_muted(message): return
     log_user_action(message, "/help")
-    user_commands = ("📋 **Команды для всех:**\n/start - Главное меню\n/bio - Моё био\n/website - Мой сайт\n/support ТЕКСТ - Сообщение в поддержку\n/calc - Калькулятор\n/vip - VIP-раздел")
+    user_commands = ("📋 **Команды для всех:**\n/start - Главное меню\n/bio - Моё био\n/support ТЕКСТ - Сообщение в поддержку\n/calc - Калькулятор\n/vip - VIP-раздел")
     if message.from_user.id == ADMIN_ID:
         admin_commands = ("\n\n👑 **Админ-команды:**\n/stats - Статистика бота\n/users - Список всех пользователей\n/export - Скачать базу пользователей (CSV)\n/top - Топ активных пользователей\n/clean_logs - Очистить логи\n/sendall - Рассылка\n/ban - Забанить\n/unban - Разбанить\n/banned - Список забаненных\n/mute - Заглушить\n/unmute - Разглушить\n/warn - Предупредить\n/warns - Предупреждения\n/reply ID ТЕКСТ - Ответить пользователю\n/getlog - Скачать полный лог сообщений")
         bot.send_message(message.chat.id, user_commands + admin_commands)
@@ -645,9 +632,6 @@ def handle_callback(call):
     if call.data == "bio":
         bot.answer_callback_query(call.id, "📝 Био")
         bio(call.message)
-    elif call.data == "website":
-        bot.answer_callback_query(call.id, "🌐 Сайт")
-        website(call.message)
     elif call.data == "support":
         bot.answer_callback_query(call.id, "🆘 Поддержка")
         support_command(call.message)
@@ -681,8 +665,6 @@ def handle_reply_buttons(message):
         return
     if message.text == "📝 Био":
         bio(message)
-    elif message.text == "🌐 Сайт":
-        website(message)
     elif message.text == "📋 Команды":
         help_command(message)
     elif message.text == "👤 Мой профиль":
