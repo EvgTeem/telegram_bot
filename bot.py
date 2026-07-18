@@ -4,8 +4,8 @@ from datetime import datetime, timedelta
 import json
 import os
 import time
-from flask import Flask
-import threading
+
+
 import random
 
 TOKEN = os.getenv('TOKEN')
@@ -1082,15 +1082,6 @@ def handle_reply_buttons(message):
 # ============================================
 # 18. ЗАПУСК БОТА
 # ============================================
-app = Flask(__name__)
-
-@app.route('/')
-def home():
-    return "Бот работает!", 200
-
-def run_bot():
-    print("✅ Бот с VIP, монетами и поддержкой запущен!")
+if __name__ == "__main__":
+    print("✅ Бот запущен!")
     bot.infinity_polling()
-
-threading.Thread(target=run_bot, daemon=True).start()
-app.run(host='0.0.0.0', port=10000)
