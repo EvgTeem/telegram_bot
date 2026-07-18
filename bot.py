@@ -235,7 +235,7 @@ def check_vip(message):
     return True
 
 # ============================================
-# 6. ОСНОВНЫЕ КОМАНДЫ
+# 6. КОМАНДЫ
 # ============================================
 @bot.message_handler(commands=['start'])
 def start(message):
@@ -246,7 +246,7 @@ def start(message):
     first_name = message.from_user.first_name
     is_new = save_user(user_id, username, first_name)
     
-    # Реферальная система
+    # Рефералка
     if message.text.startswith('/start ref_'):
         ref_id = message.text.split('_')[1]
         if is_new and ref_id != str(user_id):
@@ -286,23 +286,21 @@ def bio(message):
         "@w3hand — the movement."
     )
 
-@bot.message_handler(commands=['help'])
-def help_command(message):
+@bot.message_handler(commands=['calc'])
+def calc(message):
     if check_banned(message): return
     if check_muted(message): return
-    log_user_action(message, "/help")
-    user_commands = "📋 **Команды для всех:**\n/start - Главное меню\n/bio - Моё био\n/support ТЕКСТ - Сообщение в поддержку\n/calc - Калькулятор"
-    if is_vip(message.from_user.id):
-        user_commands += "\n\n👑 **VIP-команды:**\n/vip_info - Информация о VIP\n/vip_joke - Шутка для VIP\n/vip_time - Время для VIP\n/vip_chat - Приватный чат с админом\n/slot - Казино\n/lottery - Лотерея\n/quiz - Викторина\n/ref - Реферальная программа"
-    if message.from_user.id == ADMIN_ID:
-        admin_commands = ("\n\n👑 **Админ-команды:**\n/stats - Статистика\n/users - Список пользователей\n/export - Экспорт CSV\n/top - Топ активных\n/clean_logs - Очистить логи\n/sendall - Рассылка\n/ban - Забанить\n/unban - Разбанить\n/banned - Список забаненных\n/mute - Заглушить\n/unmute - Разглушить\n/warn - Предупредить\n/warns - Предупреждения\n/reply ID ТЕКСТ - Ответить пользователю\n/getlog - Скачать логи\n/vip_manage ID days - Выдать VIP\n/vip_remove ID - Забрать VIP\n/coins_add ID amount - Добавить монеты\n/coins_remove ID amount - Забрать монеты")
-        bot.send_message(message.chat.id, user_commands + admin_commands)
-    else:
-        bot.send_message(message.chat.id, user_commands)
+    log_user_action(message, "/calc")
+    text = message.text.replace('/calc', '').strip()
+    if not text:
+        bot.send_message(message.chat.id, "📱 /calc 2+2")
+        return
+    try:
+        result = eval(text)
+        bot.send_message(message.chat.id, f"🧮 {text} = {result}")
+    except:
+        bot.send_message(message.chat.id, "❌ Ошибка!")
 
-# ============================================
-# 7. ПОДДЕРЖКА (ИСПРАВЛЕННАЯ)
-# ============================================
 @bot.message_handler(commands=['support'])
 def support_command(message):
     log_user_action(message, "/support")
@@ -335,8 +333,33 @@ def support_command(message):
     except Exception as e:
         bot.send_message(message.chat.id, "❌ Ошибка отправки сообщения. Попробуй позже.")
 
+@bot.message_handler(commands=['reply'])
+def reply_command(message):
+    user_id = message.from_user.id
+    if user_id != ADMIN_ID:
+        bot.send_message(message.chat.id, "❌ У тебя нет прав!")
+        return
+    parts = message.text.split(maxsplit=2)
+    if len(parts) < 3:
+        bot.send_message(message.chat.id, "❌ Используй: /reply ID ТЕКСТ\n\nПример: /reply 123456789 Привет, я тебя разбанил!")
+        return
+    try:
+        target_id = int(parts[1])
+        reply_text = parts[2]
+    except:
+        bot.send_message(message.chat.id, "❌ Неверный ID!")
+        return
+    if not is_registered(target_id):
+        bot.send_message(message.chat.id, f"❌ Пользователь с ID {target_id} не найден.")
+        return
+    try:
+        bot.send_message(target_id, f"📩 ОТВЕТ ОТ АДМИНИСТРАТОРА:\n\n{reply_text}")
+        bot.send_message(message.chat.id, f"✅ Ответ отправлен пользователю {target_id}!")
+    except Exception as e:
+        bot.send_message(message.chat.id, f"❌ Не удалось отправить ответ: {e}")
+
 # ============================================
-# 8. VIP-КОМАНДЫ (ТОЛЬКО ДЛЯ VIP)
+# 7. VIP-КОМАНДЫ (ТОЛЬКО ДЛЯ VIP)
 # ============================================
 @bot.message_handler(commands=['vip_info'])
 def vip_info(message):
@@ -389,7 +412,7 @@ def vip_chat(message):
     bot.send_message(message.chat.id, "✅ Сообщение отправлено админу!")
 
 # ============================================
-# 9. КАЗИНО (СЛОТ)
+# 8. КАЗИНО (СЛОТ)
 # ============================================
 @bot.message_handler(commands=['slot'])
 def slot(message):
@@ -424,7 +447,7 @@ def slot(message):
         bot.send_message(message.chat.id, f"🎰 Проигрыш!\n{result}\n\nТы проиграл {bet} монет.")
 
 # ============================================
-# 10. ЛОТЕРЕЯ
+# 9. ЛОТЕРЕЯ
 # ============================================
 def load_lottery():
     if os.path.exists(LOTTERY_FILE):
@@ -473,7 +496,7 @@ def lottery(message):
             pass
 
 # ============================================
-# 11. ВИКТОРИНА (КВИЗ)
+# 10. ВИКТОРИНА (КВИЗ)
 # ============================================
 QUIZ = [
     {"question": "Сколько планет в Солнечной системе?", "answers": ["8", "9", "7", "10"], "correct": 0},
@@ -491,7 +514,7 @@ def vip_quiz(message):
     bot.send_message(message.chat.id, f"🧠 **Вопрос для VIP:**\n{question['question']}", reply_markup=keyboard)
 
 # ============================================
-# 12. РЕФЕРАЛЬНАЯ ПРОГРАММА
+# 11. РЕФЕРАЛЬНАЯ ПРОГРАММА
 # ============================================
 REFS_FILE = 'refs.json'
 
@@ -514,7 +537,7 @@ def ref_command(message):
     bot.send_message(message.chat.id, f"🔗 **Твоя реферальная ссылка:**\n{ref_link}\n\n👥 Приглашено: {count}\n🎁 За каждого нового пользователя ты получишь 5 монет!")
 
 # ============================================
-# 13. ПОКУПКА VIP ЗА 150 STARS
+# 12. ПОКУПКА VIP ЗА 150 STARS
 # ============================================
 @bot.message_handler(commands=['buy_vip'])
 def buy_vip(message):
@@ -551,7 +574,7 @@ def process_successful_payment(message):
             pass
 
 # ============================================
-# 14. АДМИН-УПРАВЛЕНИЕ VIP И КОИНАМИ
+# 13. АДМИН-УПРАВЛЕНИЕ VIP И КОИНАМИ
 # ============================================
 @bot.message_handler(commands=['vip_manage'])
 def vip_manage(message):
@@ -641,7 +664,359 @@ def coins_remove(message):
         bot.send_message(message.chat.id, "❌ Неверный ID или количество.")
 
 # ============================================
-# 15. ОБРАБОТЧИК КНОПОК
+# 14. АДМИН-КОМАНДЫ (СТАРЫЕ)
+# ============================================
+@bot.message_handler(commands=['stats'])
+def stats(message):
+    user_id = message.from_user.id
+    if user_id != ADMIN_ID:
+        bot.send_message(message.chat.id, "❌ У тебя нет прав!")
+        return
+    users = load_users()
+    total_users = len(users)
+    commands_count = {}
+    total_commands = 0
+    today_commands = 0
+    week_commands = 0
+    today_date = datetime.now().strftime('%Y-%m-%d')
+    try:
+        if os.path.exists(LOG_FILE):
+            with open(LOG_FILE, 'r', encoding='utf-8') as f:
+                for line in f:
+                    if '->' in line:
+                        total_commands += 1
+                        if today_date in line:
+                            today_commands += 1
+                        try:
+                            date_part = line.split('[')[1].split(']')[0].split(' ')[0]
+                            log_date = datetime.strptime(date_part, '%Y-%m-%d')
+                            if (datetime.now() - log_date).days <= 7:
+                                week_commands += 1
+                        except:
+                            pass
+                        parts = line.split('->')
+                        if len(parts) > 1:
+                            cmd = parts[1].strip().split(' ')[0].replace('[', '').replace(']', '').strip()
+                            if cmd and not cmd.startswith('💬') and not cmd.startswith('📱'):
+                                commands_count[cmd] = commands_count.get(cmd, 0) + 1
+    except:
+        pass
+    top_commands = sorted(commands_count.items(), key=lambda x: x[1], reverse=True)[:5]
+    today_users = 0
+    week_users = 0
+    for uid, data in users.items():
+        try:
+            reg_date = datetime.strptime(data['date'], '%Y-%m-%d %H:%M:%S')
+            if (datetime.now() - reg_date).days == 0:
+                today_users += 1
+            if (datetime.now() - reg_date).days <= 7:
+                week_users += 1
+        except:
+            pass
+    banned = load_banned()
+    muted = load_muted()
+    stats_text = (f"📊 СТАТИСТИКА БОТА\n{'='*30}\n\n👥 Всего пользователей: {total_users}\n🆕 За сегодня: {today_users}\n📈 За неделю: {week_users}\n\n📱 Команд всего: {total_commands}\n📅 За сегодня: {today_commands}\n📆 За неделю: {week_commands}\n\n🔥 Топ команд:\n")
+    if top_commands:
+        for i, (cmd, count) in enumerate(top_commands, 1):
+            stats_text += f"  {i}. {cmd}: {count}\n"
+    else:
+        stats_text += "  Нет данных\n"
+    stats_text += f"\n⛔ Забаненных: {len(banned)}\n🔇 Заглушенных: {len(muted)}"
+    bot.send_message(message.chat.id, stats_text)
+
+@bot.message_handler(commands=['users'])
+def list_users(message):
+    user_id = message.from_user.id
+    if user_id != ADMIN_ID:
+        bot.send_message(message.chat.id, "❌ У тебя нет прав!")
+        return
+    users = load_users()
+    if not users:
+        bot.send_message(message.chat.id, "📋 Пользователей нет.")
+        return
+    text = "📋 Все пользователи:\n\n"
+    for uid, data in users.items():
+        text += f"ID: {uid}\nИмя: {data['first_name']}\nЮзернейм: @{data['username']}\nДата: {data['date']}\n\n"
+    if len(text) > 4096:
+        for i in range(0, len(text), 4000):
+            bot.send_message(message.chat.id, text[i:i+4000])
+    else:
+        bot.send_message(message.chat.id, text)
+
+@bot.message_handler(commands=['export'])
+def export_users(message):
+    if message.from_user.id != ADMIN_ID:
+        bot.send_message(message.chat.id, "❌ У тебя нет прав!")
+        return
+    users = load_users()
+    if not users:
+        bot.send_message(message.chat.id, "📋 База пользователей пуста.")
+        return
+    csv_data = "ID,Имя,Юзернейм,Дата регистрации\n"
+    for uid, data in users.items():
+        csv_data += f"{uid},{data['first_name']},@{data['username']},{data['date']}\n"
+    csv_file = 'users_export.csv'
+    with open(csv_file, 'w', encoding='utf-8') as f:
+        f.write(csv_data)
+    try:
+        with open(csv_file, 'rb') as f:
+            bot.send_document(message.chat.id, f, caption="📊 Вот список всех пользователей в формате CSV")
+        os.remove(csv_file)
+        bot.send_message(message.chat.id, "✅ Файл успешно отправлен и удалён с сервера!")
+    except Exception as e:
+        bot.send_message(message.chat.id, f"❌ Ошибка отправки файла: {e}")
+
+@bot.message_handler(commands=['top'])
+def top_users(message):
+    if message.from_user.id != ADMIN_ID:
+        bot.send_message(message.chat.id, "❌ У тебя нет прав!")
+        return
+    try:
+        if not os.path.exists(LOG_FILE):
+            bot.send_message(message.chat.id, "📋 Логов пока нет.")
+            return
+        user_activity = {}
+        with open(LOG_FILE, 'r', encoding='utf-8') as f:
+            for line in f:
+                if '->' in line:
+                    parts = line.split('id=')
+                    if len(parts) > 1:
+                        user_id = parts[1].split(')')[0].strip()
+                        if user_id.isdigit():
+                            user_activity[user_id] = user_activity.get(user_id, 0) + 1
+        if not user_activity:
+            bot.send_message(message.chat.id, "📋 Нет данных об активности.")
+            return
+        top_users = sorted(user_activity.items(), key=lambda x: x[1], reverse=True)[:5]
+        users = load_users()
+        top_text = "🏆 **Топ активных пользователей:**\n\n"
+        for i, (user_id, count) in enumerate(top_users, 1):
+            user_data = users.get(user_id, {})
+            name = user_data.get('first_name', 'Неизвестно')
+            username = user_data.get('username', 'нет')
+            top_text += f"{i}. {name} (@{username}) — {count} команд\n"
+        bot.send_message(message.chat.id, top_text)
+    except Exception as e:
+        bot.send_message(message.chat.id, f"❌ Ошибка: {e}")
+
+@bot.message_handler(commands=['clean_logs'])
+def clean_logs(message):
+    if message.from_user.id != ADMIN_ID:
+        bot.send_message(message.chat.id, "❌ У тебя нет прав!")
+        return
+    try:
+        if os.path.exists(LOG_FILE):
+            with open(LOG_FILE, 'w', encoding='utf-8') as f:
+                f.write("")
+            bot.send_message(message.chat.id, "✅ Логи успешно очищены!")
+        else:
+            bot.send_message(message.chat.id, "📁 Файл с логами не найден.")
+    except Exception as e:
+        bot.send_message(message.chat.id, f"❌ Ошибка: {e}")
+
+@bot.message_handler(commands=['ban'])
+def ban_user(message):
+    user_id = message.from_user.id
+    if user_id != ADMIN_ID:
+        bot.send_message(message.chat.id, "❌ У тебя нет прав!")
+        return
+    text = message.text.replace('/ban', '').strip()
+    if not text and not message.reply_to_message:
+        bot.send_message(message.chat.id, "❌ Укажи ID или ответь на сообщение!")
+        return
+    target_id = message.reply_to_message.from_user.id if message.reply_to_message else int(text)
+    if target_id == ADMIN_ID:
+        bot.send_message(message.chat.id, "❌ Нельзя забанить админа!")
+        return
+    muted = load_muted()
+    if str(target_id) in muted:
+        del muted[str(target_id)]
+        save_muted(muted)
+    banned = load_banned()
+    banned[str(target_id)] = {'date': datetime.now().strftime('%Y-%m-%d %H:%M:%S'), 'banned_by': ADMIN_ID}
+    save_banned(banned)
+    bot.send_message(message.chat.id, f"✅ Пользователь {target_id} забанен!")
+    try:
+        bot.send_message(target_id, f"⛔ Ты забанен!\n\nТы можешь писать только в поддержку: /support\nОбратись к @whyyhe для разблокировки.")
+    except:
+        pass
+
+@bot.message_handler(commands=['unban'])
+def unban_user(message):
+    user_id = message.from_user.id
+    if user_id != ADMIN_ID:
+        bot.send_message(message.chat.id, "❌ У тебя нет прав!")
+        return
+    text = message.text.replace('/unban', '').strip()
+    if not text and not message.reply_to_message:
+        bot.send_message(message.chat.id, "❌ Укажи ID или ответь на сообщение!")
+        return
+    target_id = message.reply_to_message.from_user.id if message.reply_to_message else int(text)
+    banned = load_banned()
+    if str(target_id) in banned:
+        del banned[str(target_id)]
+        save_banned(banned)
+        bot.send_message(message.chat.id, f"✅ Пользователь {target_id} разбанен!")
+        try:
+            bot.send_message(target_id, f"✅ Ты разбанен!\n\nТеперь ты снова можешь пользоваться ботом.\nНапиши /start.")
+        except:
+            pass
+    else:
+        bot.send_message(message.chat.id, f"❌ Пользователь не в бане!")
+
+@bot.message_handler(commands=['banned'])
+def list_banned(message):
+    user_id = message.from_user.id
+    if user_id != ADMIN_ID:
+        bot.send_message(message.chat.id, "❌ У тебя нет прав!")
+        return
+    banned = load_banned()
+    if not banned:
+        bot.send_message(message.chat.id, "📋 Список забаненных пуст.")
+        return
+    text = "📋 Забаненные:\n\n"
+    for uid, data in banned.items():
+        text += f"ID: {uid}\nДата: {data['date']}\n\n"
+    bot.send_message(message.chat.id, text)
+
+@bot.message_handler(commands=['mute'])
+def mute_user(message):
+    user_id = message.from_user.id
+    if user_id != ADMIN_ID:
+        bot.send_message(message.chat.id, "❌ У тебя нет прав!")
+        return
+    text = message.text.replace('/mute', '').strip()
+    if not text and not message.reply_to_message:
+        bot.send_message(message.chat.id, "❌ Укажи ID или ответь на сообщение!")
+        return
+    target_id = message.reply_to_message.from_user.id if message.reply_to_message else int(text)
+    if target_id == ADMIN_ID:
+        bot.send_message(message.chat.id, "❌ Нельзя заглушить админа!")
+        return
+    muted = load_muted()
+    muted[str(target_id)] = {'date': datetime.now().strftime('%Y-%m-%d %H:%M:%S'), 'muted_by': ADMIN_ID}
+    save_muted(muted)
+    bot.send_message(message.chat.id, f"🔇 {target_id} заглушен!")
+    try:
+        bot.send_message(target_id, f"🔇 Ты заглушен!")
+    except:
+        pass
+
+@bot.message_handler(commands=['unmute'])
+def unmute_user(message):
+    user_id = message.from_user.id
+    if user_id != ADMIN_ID:
+        bot.send_message(message.chat.id, "❌ У тебя нет прав!")
+        return
+    text = message.text.replace('/unmute', '').strip()
+    if not text and not message.reply_to_message:
+        bot.send_message(message.chat.id, "❌ Укажи ID или ответь на сообщение!")
+        return
+    target_id = message.reply_to_message.from_user.id if message.reply_to_message else int(text)
+    muted = load_muted()
+    if str(target_id) in muted:
+        del muted[str(target_id)]
+        save_muted(muted)
+        bot.send_message(message.chat.id, f"🔊 {target_id} разглушен!")
+        try:
+            bot.send_message(target_id, f"🔊 Ты разглушен!")
+        except:
+            pass
+    else:
+        bot.send_message(message.chat.id, f"❌ Не в муте!")
+
+@bot.message_handler(commands=['warn'])
+def warn_user(message):
+    user_id = message.from_user.id
+    if user_id != ADMIN_ID:
+        bot.send_message(message.chat.id, "❌ У тебя нет прав!")
+        return
+    if not message.reply_to_message:
+        bot.send_message(message.chat.id, "❌ Ответь на сообщение!")
+        return
+    target_id = message.reply_to_message.from_user.id
+    if target_id == ADMIN_ID:
+        bot.send_message(message.chat.id, "❌ Нельзя предупредить админа!")
+        return
+    warns = add_warn(target_id)
+    bot.send_message(message.chat.id, f"⚠️ Предупреждение! Всего: {warns}")
+    try:
+        bot.send_message(target_id, f"⚠️ Ты получил предупреждение! Всего: {warns}")
+    except:
+        pass
+
+@bot.message_handler(commands=['warns'])
+def check_warns(message):
+    user_id = message.from_user.id
+    if user_id != ADMIN_ID:
+        bot.send_message(message.chat.id, "❌ У тебя нет прав!")
+        return
+    text = message.text.replace('/warns', '').strip()
+    if not text and not message.reply_to_message:
+        bot.send_message(message.chat.id, "❌ Укажи ID или ответь на сообщение!")
+        return
+    target_id = message.reply_to_message.from_user.id if message.reply_to_message else int(text)
+    warns = get_warns(target_id)
+    bot.send_message(message.chat.id, f"⚠️ Предупреждений: {warns}")
+
+@bot.message_handler(commands=['sendall'])
+def sendall_command(message):
+    user_id = message.from_user.id
+    if user_id != ADMIN_ID:
+        bot.send_message(message.chat.id, "❌ У тебя нет прав!")
+        return
+    text = message.text.replace('/sendall', '').strip()
+    if not text:
+        bot.send_message(message.chat.id, "❌ Напиши текст!")
+        return
+    bot.send_message(message.chat.id, f"⏳ Рассылка...")
+    success, fail = send_broadcast(text)
+    bot.send_message(message.chat.id, f"✅ Отправлено: {success}\n❌ Ошибок: {fail}")
+
+@bot.message_handler(commands=['getlog'])
+def send_logs(message):
+    user_id = message.from_user.id
+    if user_id != ADMIN_ID:
+        bot.send_message(message.chat.id, "❌ У тебя нет прав!")
+        return
+    if os.path.exists(LOG_FILE):
+        try:
+            with open(LOG_FILE, 'rb') as f:
+                bot.send_document(message.chat.id, f, caption="📋 Вот полный лог всех сообщений.")
+        except Exception as e:
+            bot.send_message(message.chat.id, f"❌ Ошибка: {e}")
+    else:
+        bot.send_message(message.chat.id, "📁 Лог-файл пока пуст.")
+
+# ============================================
+# 15. ПРОФИЛЬ
+# ============================================
+def profile(message):
+    user_id = message.from_user.id
+    if check_banned(message): return
+    if check_muted(message): return
+    users = load_users()
+    user_data = users.get(str(user_id))
+    if user_data:
+        now = datetime.now()
+        vip_status = "👑 VIP" if is_vip(user_id) else "👤 Пользователь"
+        coins = get_coins(user_id)
+        bot.send_message(
+            message.chat.id,
+            f"👤 **Твой профиль:**\n\n"
+            f"🕐 Текущее время: {now.strftime('%H:%M:%S')}\n"
+            f"📅 Текущая дата: {now.strftime('%Y-%m-%d')}\n\n"
+            f"👤 Имя: {user_data['first_name']}\n"
+            f"📛 Юзернейм: @{user_data['username']}\n"
+            f"📅 Дата регистрации: {user_data['date']}\n"
+            f"⭐ Статус: {vip_status}\n"
+            f"🪙 Монет: {coins}"
+        )
+    else:
+        bot.send_message(message.chat.id, "❌ Ты не зарегистрирован! Напиши /start")
+
+# ============================================
+# 16. ОБРАБОТЧИК ИНЛАЙН-КНОПОК
 # ============================================
 @bot.callback_query_handler(func=lambda call: True)
 def handle_callback(call):
@@ -669,7 +1044,7 @@ def handle_callback(call):
         bot.answer_callback_query(call.id, "Неизвестная команда")
 
 # ============================================
-# 16. ОБРАБОТЧИК REPLY-КНОПОК
+# 17. ОБРАБОТЧИК REPLY-КНОПОК
 # ============================================
 @bot.message_handler(func=lambda message: True)
 def handle_reply_buttons(message):
@@ -704,40 +1079,7 @@ def handle_reply_buttons(message):
         bot.send_message(message.chat.id, "❓ Используй кнопки внизу 👇")
 
 # ============================================
-# 17. ПРОФИЛЬ
-# ============================================
-def profile(message):
-    user_id = message.from_user.id
-    if check_banned(message): return
-    if check_muted(message): return
-    users = load_users()
-    user_data = users.get(str(user_id))
-    if user_data:
-        now = datetime.now()
-        vip_status = "👑 VIP" if is_vip(user_id) else "👤 Пользователь"
-        coins = get_coins(user_id)
-        bot.send_message(
-            message.chat.id,
-            f"👤 **Твой профиль:**\n\n"
-            f"🕐 Текущее время: {now.strftime('%H:%M:%S')}\n"
-            f"📅 Текущая дата: {now.strftime('%Y-%m-%d')}\n\n"
-            f"👤 Имя: {user_data['first_name']}\n"
-            f"📛 Юзернейм: @{user_data['username']}\n"
-            f"📅 Дата регистрации: {user_data['date']}\n"
-            f"⭐ Статус: {vip_status}\n"
-            f"🪙 Монет: {coins}"
-        )
-    else:
-        bot.send_message(message.chat.id, "❌ Ты не зарегистрирован! Напиши /start")
-
-# ============================================
-# 18. АДМИН-КОМАНДЫ (СТАТИСТИКА, ПОЛЬЗОВАТЕЛИ И Т.Д.)
-# ============================================
-# Здесь вставь свои существующие админ-команды (stats, users, export, top, clean_logs, sendall, ban, unban, banned, mute, unmute, warn, warns, reply, getlog)
-# Они остаются без изменений, просто добавь их сюда.
-
-# ============================================
-# 19. ЗАПУСК БОТА
+# 18. ЗАПУСК БОТА
 # ============================================
 app = Flask(__name__)
 
