@@ -8,7 +8,7 @@ import time
 
 import random
 
-TOKEN = '8428051798:AAG0pwjMglUwGUmUiFYcYxMHbrNoE4O0lqI'
+TOKEN = '8428051798:AAFmc1BuoOnHvkcbjNvdt8FY8DyCThLruq0'
 ADMIN_ID = 1107351961
 
 bot = telebot.TeleBot(TOKEN)
